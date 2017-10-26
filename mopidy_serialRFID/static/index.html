@@ -1,0 +1,116 @@
+<html>
+	<head>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+		<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+		<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+		<script>
+		
+			function Add(tag, list){ 
+				$("#table_id tbody").append( 
+					"<tr>"+ 
+					"<td>"+tag+"</td>"+ 
+					"<td>"+list+"</td>"+  
+					"</tr>"); 
+			}; 
+
+			function resetTable(){
+				while($("#table_id")[0].rows.length > 0) {
+				  $("#table_id")[0].deleteRow(0);
+				}
+			}
+			
+			function loadCSV(){				
+				
+				jQuery.ajax({
+					url: "/serialRFID/csvTable",
+					type: "GET",
+
+					contentType: 'application/json; charset=utf-8',
+					success: function(resultData) {
+						var json = $.parseJSON(resultData);
+						for(var i=0;i<json.length;i++)
+						{
+							Add(json[i][0], json[i][1])
+
+						}   
+
+					},
+					error : function(jqXHR, textStatus, errorThrown) {
+					},
+
+					timeout: 120000,
+				});
+			}
+
+			$(document).ready(function() {
+			
+				loadCSV()
+			
+			});
+			
+			function scanTag(){
+				jQuery.ajax({
+					url: "/serialRFID/getRFIDKey",
+					type: "GET",
+
+					contentType: 'application/json; charset=utf-8',
+					success: function(resultData) {
+						$("#rfidTag").val(resultData) 
+
+					},
+					error : function(jqXHR, textStatus, errorThrown) {
+					},
+
+					timeout: 120000,
+				});
+			}
+			
+
+			
+			function saveTag(){
+				var ajaxRequest = $.ajax({
+					type: "POST",
+					url: "/serialRFID/csvTable",
+					data: $("#rfidForm").serialize(),
+					processData: false
+					});
+
+				//When the request successfully finished, execute passed in function
+				ajaxRequest.done(function(msg){
+					resetTable()
+					loadCSV()
+				});
+
+				//When the request failed, execute the passed in function
+				ajaxRequest.fail(function(jqXHR, status){
+					resetTable()
+					loadCSV()
+				});
+			
+		
+			}
+			
+		</script>
+	</head>
+
+	<body>
+	
+		<h1> hello</h1>
+			
+		<table id="table_id" class="display">
+			<thead>
+				<tr><th>RFID Tag</th><th>Spotify Playlist</th></tr>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
+		<form id="rfidForm">
+			  RFID Tag:<br>
+			  <input type="text" name="rfidTag" id="rfidTag" /><br>
+			  Spotify Playlist:<br>
+			  <input type="text" name="playlist" id="playlist" />
+		</form>
+			<button onclick="scanTag()">Scan RFID Tag</button>
+			<button onclick="saveTag()">Save mapping</button>
+	</body>
+</html>

@@ -4,5 +4,7 @@ include MANIFEST.in
 include README.rst
 include mopidy_serialRFID/ext.conf
 include tox.ini
+include mopidy_serialRFID/static/*
+include mopidy_serialRFID/cardList.csv
 
 recursive-include tests *.py
