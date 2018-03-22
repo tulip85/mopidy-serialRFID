@@ -30,7 +30,7 @@ setup(
     ],
     entry_points={
         'mopidy.ext': [
-            'serialRFID = mopidy-serialRFID:Extension',
+            'serialRFID = mopidy_serialRFID:Extension',
         ],
     },
     classifiers=[
