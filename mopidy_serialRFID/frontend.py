@@ -10,27 +10,19 @@ import threading
 import csv
 import pykka
 
-
+import RPi.GPIO as GPIO
 logger = logging.getLogger(__name__)
 
 
-class RFIDThread(Thread):
-    def __init__(self, device, core):
-        Thread.__init__(self)
-        self.dev = device
-        #getList of cards
-        self.path = os.path.dirname(os.path.realpath(__file__))
-        self.cardList = self.readList()
-        self.lastCard = ''
-        self.core = core
-
-    def start(self):
-        super(RFIDThread, self).start()
+                    
+class serialRFID(pykka.ThreadingActor, core.CoreListener):
     
+   
+  
     def readCard(self):
         key = ''
         
-        while key == '' or key == self.lastCard or len(key) < 12:
+        while key == '' or len(key) < 12:
             ID = ""
             read_byte = self.dev.read()
             if read_byte=="\x02":
@@ -38,7 +30,6 @@ class RFIDThread(Thread):
                     read_byte=self.dev.read()
                     ID = ID + str(read_byte)
                 key = ID
-        self.lastCard = key
         return key
  
     def readList(self):
@@ -66,27 +57,26 @@ class RFIDThread(Thread):
         except:
             logger.error('Could not play playlist '+plist)
             logger.error(sys.exc_info()[0])
-        time.sleep(5)
 
-            
-    def run(self):
-        while True:
-            try:
-                self.card = self.readCard()
-                logger.info('Read card '+self.card)
-                self.plist = self.getPlaylist(self.card)
-                logger.info('Playlist'+self.plist)
-                if self.plist != '':
-                    self.play(self.plist)
-                time.sleep(5) 
-            except KeyboardInterrupt:
-                sys.exit(0)
-            except:
-                pass
+           
             
     
-                    
-class serialRFID(pykka.ThreadingActor, core.CoreListener):
+    def eventDetected(self, channel):
+        logger.info("reading rfid card")
+        #initialize device
+        self.dev = serial.Serial(self.deviceName,self.rate)
+  
+        self.path = os.path.dirname(os.path.realpath(__file__))
+        self.card = self.readCard()
+        logger.info('Read card '+self.card)
+        self.plist = self.getPlaylist(self.card)
+        logger.info('Playlist'+self.plist)
+        if self.plist != '':
+            self.play(self.plist)
+        #close port
+        self.dev.close()
+                
+    
     
     def __init__(self, config, core):
         super(serialRFID, self).__init__()
@@ -95,12 +85,17 @@ class serialRFID(pykka.ThreadingActor, core.CoreListener):
         self.config = config
         self.deviceName = config['serialRFID']['device']
         self.rate = config['serialRFID']['rate']
-        #initialize device
-        self.dev = serial.Serial(self.deviceName,self.rate)
         
-        self.workerThread = RFIDThread(self.dev, self.core)
-        self.workerThread.start()
+        
+        GPIO.setmode(GPIO.BOARD)
+        logger.info("Started setup")
+        
+        #register buttons
+        if config['serialRFID']['button']:
+            GPIO.setup(config['serialRFID']['button'], GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            GPIO.add_event_detect(config['serialRFID']['button'], GPIO.RISING, bouncetime=200)
+            GPIO.add_event_callback(config['serialRFID']['button'], self.eventDetected)
 
-   
+
 
 

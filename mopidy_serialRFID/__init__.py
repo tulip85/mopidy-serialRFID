@@ -25,6 +25,7 @@ class Extension(ext.Extension):
         schema = super(Extension, self).get_config_schema()
         schema['device'] = config.String()
         schema['rate'] = config.Integer()
+        schema['button'] = config.Integer()
         return schema
         
 
