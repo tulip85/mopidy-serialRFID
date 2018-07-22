@@ -35,7 +35,14 @@ Before starting Mopidy, you must add configuration for
 Mopidy-serialRFID to your Mopidy configuration file::
 
     [serialRFID]
-    # TODO: Add example of extension config
+    enabled = true
+	device = /dev/ttyAMA0
+	rate = 9600
+	button = 40
+	oled_enabled = true
+	oled_bus = 1
+	oled_address = 0x3c
+	oled_driver = ssd1306
 
 
 Project resources
