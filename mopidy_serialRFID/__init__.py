@@ -26,6 +26,10 @@ class Extension(ext.Extension):
         schema['device'] = config.String()
         schema['rate'] = config.Integer()
         schema['button'] = config.Integer()
+        schema['oled_bus'] = config.Integer()
+        schema['oled_address'] = config.String()
+        schema['oled_enabled'] = config.Boolean()
+        schema['oled_driver'] = config.String()
         return schema
         
 

@@ -10,6 +10,17 @@ import threading
 import csv
 import pykka
 
+from smbus import SMBus
+
+
+from luma.core.interface.serial import i2c, spi
+from luma.core.render import canvas
+from luma.oled.device import ssd1306, ssd1322, ssd1325, ssd1331, sh1106
+from luma.core.virtual import viewport
+
+from PIL import ImageFont, Image, ImageSequence
+
+
 import RPi.GPIO as GPIO
 logger = logging.getLogger(__name__)
 
@@ -62,6 +73,11 @@ class serialRFID(pykka.ThreadingActor, core.CoreListener):
             
     
     def eventDetected(self, channel):
+        
+        if self.oledEnabled:
+            self.set_image("detecting.gif")
+            
+            
         logger.info("reading rfid card")
         #initialize device
         self.dev = serial.Serial(self.deviceName,self.rate)
@@ -72,7 +88,12 @@ class serialRFID(pykka.ThreadingActor, core.CoreListener):
         self.plist = self.getPlaylist(self.card)
         logger.info('Playlist'+self.plist)
         if self.plist != '':
+            if self.oledEnabled:
+                self.set_image("detected.gif")
             self.play(self.plist)
+        else:
+            if self.oledEnabled:
+                self.set_image("error.gif")
         #close port
         self.dev.close()
                 
@@ -85,17 +106,46 @@ class serialRFID(pykka.ThreadingActor, core.CoreListener):
         self.config = config
         self.deviceName = config['serialRFID']['device']
         self.rate = config['serialRFID']['rate']
-        
+        self.oledEnabled = config['serialRFID']['oled_enabled']
+        #if screen is used 
+        if self.oledEnabled:
+            if config['serialRFID']['oled_bus'] and config['serialRFID']['oled_address']:
+                self.serial = i2c(bus=SMBus(config['serialRFID']['oled_bus']), address=config['serialRFID']['oled_address'])
+            self.driver = config['serialRFID']['oled_driver']
+            if self.driver == 'ssd1306':
+                self.device = ssd1306(self.serial)
+            elif self.driver == 'ssd1322':
+                self.device = ssd1322(self.serial)
+            elif self.driver == 'ssd1325':
+                self.device = ssd1325(self.serial)
+            elif self.driver == 'ssd1331':    
+                self.device = ssd1331(self.serial)
+            elif self.driver == 'sh1106':
+                self.device = sh1106(self.serial)
+            else:
+                self.device = ssd1306(self.serial)
         
         GPIO.setmode(GPIO.BOARD)
-        logger.info("Started setup")
         
         #register buttons
         if config['serialRFID']['button']:
             GPIO.setup(config['serialRFID']['button'], GPIO.IN, pull_up_down=GPIO.PUD_UP)
-            GPIO.add_event_detect(config['serialRFID']['button'], GPIO.RISING, bouncetime=200)
+            GPIO.add_event_detect(config['serialRFID']['button'], GPIO.RISING, bouncetime=600)
             GPIO.add_event_callback(config['serialRFID']['button'], self.eventDetected)
 
+        if self.oledEnabled:
+             self.set_image("radio.gif")
+
+    def set_image(self, image):
+        img_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'images', image))
+        imageLoaded = Image.open(img_path)
+        size = [min(*self.device.size)] * 2
+        posn = ((self.device.width - size[0]) // 2, self.device.height - size[1])
+            
+        background = Image.new(self.device.mode, self.device.size, "black")
+        background.paste(imageLoaded.resize(size, resample=Image.LANCZOS), posn)
+        self.device.display(background.convert(self.device.mode))
+            
 
 
 
